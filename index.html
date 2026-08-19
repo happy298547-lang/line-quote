@@ -33,7 +33,9 @@
 
   <button class="btn-send" onclick="sendQuote()">送出報價至聊天室</button>
 <script>
-  const LIFF_ID = "2011171896-3wQjjkqC";
+  // 請改成截圖上的最新 LIFF ID
+  const LIFF_ID = "2011171896-LyV2R2Un";
+
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
 
   let itemList = [];
@@ -138,10 +140,13 @@
 
     // 檢查是否已登入，未登入則導向登入
     if (typeof liff !== 'undefined') {
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
-      }
+     
+if (!liff.isLoggedIn()) {
+  liff.login();
+  return;
+}
+
+        
 
       // 優先使用 sendMessages（直傳當前聊天室）
       if (liff.isInClient()) {
