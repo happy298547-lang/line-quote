@@ -32,8 +32,97 @@
   </div>
 
   <button class="btn-send" onclick="sendQuote()">送出報價至聊天室</button>
+<script>
+  // 請確認這裡填入的是您最新的 LIFF ID
+  const LIFF_ID = "2011171896-3wQjjkqC"; 
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
 
-async function sendQuote() {
+  let itemList = [];
+
+  // 1. 初始化頁面
+  async function init() {
+    // 試圖初始化 LIFF，即使失敗也不要卡死網頁
+    if (typeof liff !== 'undefined') {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+      } catch (err) {
+        console.error("LIFF 初始化失敗:", err);
+      }
+    }
+
+    // 讀取 Google Sheet 工項資料
+    try {
+      let res = await fetch(GAS_URL);
+      itemList = await res.json();
+      
+      // 預設建立一列工項
+      addRow();
+    } catch (e) {
+      alert("讀取工項失敗，請確認 Google Apps Script 部署設定！");
+    }
+  }
+
+  // 2. 新增工項列
+  function addRow() {
+    const container = document.getElementById("items-container");
+    if (!container) return;
+
+    const div = document.createElement("div");
+    div.className = "card row-item";
+
+    let optionsHTML = '<option value="">--請選擇工項--</option>';
+    itemList.forEach((item, index) => {
+      optionsHTML += `<option value="${index}">${item.name} ($${item.price})</option>`;
+    });
+
+    div.innerHTML = `
+      <div class="row">
+        <select onchange="calculate()">${optionsHTML}</select>
+        <input type="number" value="1" min="1" onchange="calculate()" placeholder="數量">
+        <button class="btn-del" onclick="removeRow(this)">✕</button>
+      </div>
+      <div style="text-align:right; font-size:12px; color:#666; margin-top: 5px;">
+        小計：NT$ <span class="subtotal">0</span>
+      </div>
+    `;
+    container.appendChild(div);
+  }
+
+  // 3. 刪除工項列
+  function removeRow(btn) {
+    btn.closest('.card').remove();
+    calculate();
+  }
+
+  // 4. 計算總價
+  function calculate() {
+    let total = 0;
+    const rows = document.querySelectorAll(".row-item");
+    
+    rows.forEach(row => {
+      const select = row.querySelector("select");
+      const qtyInput = row.querySelector("input");
+      const qty = parseInt(qtyInput.value) || 0;
+      const subtotalSpan = row.querySelector(".subtotal");
+
+      if (select && select.value !== "") {
+        const price = itemList[select.value].price;
+        const subtotal = price * qty;
+        subtotalSpan.innerText = subtotal.toLocaleString();
+        total += subtotal;
+      } else if (subtotalSpan) {
+        subtotalSpan.innerText = "0";
+      }
+    });
+
+    const grandTotalEl = document.getElementById("grand-total");
+    if (grandTotalEl) {
+      grandTotalEl.innerText = total.toLocaleString();
+    }
+  }
+
+  // 5. 送出報價單
+  async function sendQuote() {
     const rows = document.querySelectorAll(".row-item");
     let msg = "📋 【工項報價單】\n------------------\n";
     let total = document.getElementById("grand-total").innerText;
@@ -42,7 +131,7 @@ async function sendQuote() {
     rows.forEach(row => {
       const select = row.querySelector("select");
       const qty = row.querySelector("input").value;
-      if (select.value !== "") {
+      if (select && select.value !== "") {
         const item = itemList[select.value];
         msg += `• ${item.name} x${qty} = NT$ ${(item.price * qty).toLocaleString()}\n`;
         hasItem = true;
@@ -56,26 +145,27 @@ async function sendQuote() {
 
     msg += `------------------\n💰 總計：NT$ ${total}`;
 
-    // 優先嘗試直接發送至當前聊天室
-    if (typeof liff !== 'undefined' && liff.isApiAvailable('sendMessages')) {
+    // 檢查是否在 LINE 環境內
+    if (typeof liff !== 'undefined' && liff.isInClient()) {
+      // 嘗試發送至聊天室
       try {
         await liff.sendMessages([{ type: 'text', text: msg }]);
-        liff.closeWindow();
-        return;
+        liff.closeWindow(); // 成功發送後自動關閉視窗
       } catch (err) {
-        console.log("sendMessages 失敗，改用 shareTargetPicker:", err);
-      }
-    }
-
-    // 備用方案：跳出 LINE 好友/聊天室選擇器供使用者選擇發送
-    if (typeof liff !== 'undefined' && liff.isApiAvailable('shareTargetPicker')) {
-      try {
-        await liff.shareTargetPicker([{ type: 'text', text: msg }]);
-        liff.closeWindow();
-      } catch (err) {
-        alert("傳送失敗：" + err);
+        // 如果 sendMessages 權限受限，改調用分享選擇器
+        try {
+          await liff.shareTargetPicker([{ type: 'text', text: msg }]);
+          liff.closeWindow();
+        } catch (shareErr) {
+          alert("發送失敗，請確認權限或重新開啟 LIFF 連結：\n" + shareErr);
+        }
       }
     } else {
-      alert("目前環境無法調用 LINE 傳送功能，報價如下：\n\n" + msg);
+      // 在外部瀏覽器（Chrome / Safari）測試時跳出預覽
+      alert("【外部瀏覽器預覽】報價單內容如下：\n\n" + msg);
     }
   }
+
+  // 啟動程式
+  init();
+</script>
