@@ -136,26 +136,23 @@
 
     msg += `------------------\n💰 總計：NT$ ${total}`;
 
-    // 優先嘗試直接發送至當前聊天室
-    if (typeof liff !== 'undefined' && liff.isApiAvailable('sendMessages')) {
+    // 檢查 LIFF 環境與登入狀態
+    if (typeof liff !== 'undefined' && liff.isInClient()) {
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+      
       try {
         await liff.sendMessages([{ type: 'text', text: msg }]);
-        liff.closeWindow();
-        return;
+        liff.closeWindow(); // 發送完畢自動關閉視窗
       } catch (err) {
-        console.log("sendMessages 失敗，改用 shareTargetPicker:", err);
-      }
-    }
-
-    // 備用方案：跳出 LINE 好友/聊天室選擇器供使用者選擇發送
-    if (typeof liff !== 'undefined' && liff.isApiAvailable('shareTargetPicker')) {
-      try {
-        await liff.shareTargetPicker([{ type: 'text', text: msg }]);
-        liff.closeWindow();
-      } catch (err) {
-        alert("傳送失敗：" + err);
+        alert("訊息傳送失敗，請確認 LIFF 權限（chat_message.write）是否有勾選：\n" + err);
       }
     } else {
-      alert("目前環境無法調用 LINE 傳送功能，報價如下：\n\n" + msg);
+      alert("目前非 LINE 內部環境，報價預覽如下：\n\n" + msg);
     }
   }
+
+  init();
+</script>
