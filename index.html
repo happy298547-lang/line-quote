@@ -34,29 +34,32 @@
   <button class="btn-send" onclick="sendQuote()">送出報價至聊天室</button>
 
 <script>
-  // ⚠️ 您的 LIFF ID 與 GAS 部署網址
   const LIFF_ID = "2011171896-3wQjjkqC";
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
 
   let itemList = [];
 
   async function init() {
-    // 1. 先抓取 Google Sheet 資料（避免被 LIFF 初始化卡住）
+    // 1. 抓取 Google Sheet 資料
     try {
       let res = await fetch(GAS_URL);
       itemList = await res.json();
-      addRow(); // 成功取得資料後新增第一列
+      addRow();
     } catch (e) {
-      alert("讀取工項資料失敗，請確認 GAS 部署權限是否有開啟所有人存取。");
+      alert("讀取工項資料失敗，請確認 GAS 部署權限。");
     }
 
-    // 2. 嘗試初始化 LIFF（如果在一般瀏覽器測試失敗也不影響選單載入）
+    // 2. 初始化 LIFF 並強制登入
     try {
       if (typeof liff !== 'undefined') {
         await liff.init({ liffId: LIFF_ID });
+        // 若在 LINE 內開頁面但未登入，強制導向登入
+        if (!liff.isLoggedIn() && liff.isInClient()) {
+          liff.login();
+        }
       }
     } catch (err) {
-      console.log("LIFF 初始化跳過或失敗（如果在電腦瀏覽器測試屬正常現象）:", err);
+      console.log("LIFF 初始化失敗:", err);
     }
   }
 
@@ -110,7 +113,7 @@
     document.getElementById("grand-total").innerText = total.toLocaleString();
   }
 
-  function sendQuote() {
+  async function sendQuote() {
     const rows = document.querySelectorAll(".row-item");
     let msg = "📋 【工項報價單】\n------------------\n";
     let total = document.getElementById("grand-total").innerText;
@@ -133,14 +136,21 @@
 
     msg += `------------------\n💰 總計：NT$ ${total}`;
 
-    if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
-      liff.sendMessages([{ type: 'text', text: msg }]).then(() => {
-        liff.closeWindow();
-      }).catch((err) => {
-        alert("傳送失敗：" + err);
-      });
+    // 檢查 LIFF 環境與登入狀態
+    if (typeof liff !== 'undefined' && liff.isInClient()) {
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+      
+      try {
+        await liff.sendMessages([{ type: 'text', text: msg }]);
+        liff.closeWindow(); // 發送完畢自動關閉視窗
+      } catch (err) {
+        alert("訊息傳送失敗，請確認 LIFF 權限（chat_message.write）是否有勾選：\n" + err);
+      }
     } else {
-      alert("報價內容如下：\n\n" + msg);
+      alert("目前非 LINE 內部環境，報價預覽如下：\n\n" + msg);
     }
   }
 
