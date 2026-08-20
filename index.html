@@ -31,7 +31,6 @@
   <div class="card">
     <div class="form-group">
       <label for="project-id">案場代號 / 名稱：</label>
-      <!-- 改為標準下拉式選單 -->
       <select id="project-id" class="input-field" onchange="onProjectSelect()">
         <option value="">--請選擇案場代號--</option>
       </select>
@@ -82,7 +81,7 @@
       globalData = await res.json();
       itemList = globalData.items || [];
 
-      // 動態將所有案場填入案場下拉選單
+      // 填入案場下拉選單
       const projectSelect = document.getElementById("project-id");
       projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
       if (globalData.projects) {
@@ -93,6 +92,9 @@
           projectSelect.appendChild(opt);
         });
       }
+      
+      // 預設建立一個空白工項列
+      addRow();
     } catch (e) {
       alert("讀取工項資料失敗，請確認 GAS 部署權限。");
     }
@@ -106,70 +108,40 @@
     }
   }
 
-  // 專門建立「僅限該案場工項」的下拉選單 HTML
-  function buildOptionsHTML(selectedPId, currentSelectedName = "") {
+  // 建立僅含該案場授權工項的選單選單 HTML
+  function buildOptionsHTML(selectedPId) {
     let optionsHTML = '<option value="">--請選擇工項--</option>';
     
-    // 若尚未選擇案場，顯示全部工項
+    // 若未選擇案場，顯示所有工項
     if (!selectedPId || !globalData.projects || !globalData.projects[selectedPId]) {
       itemList.forEach((item, index) => {
-        const isSelected = (String(item.name).trim() === String(currentSelectedName).trim()) ? 'selected' : '';
-        optionsHTML += `<option value="${index}" ${isSelected}>${item.name} ($${item.price})</option>`;
+        optionsHTML += `<option value="${index}">${item.name} ($${item.price})</option>`;
       });
       return optionsHTML;
     }
 
-    // 嚴格過濾：只抓取「案場預設」有設定給該案場的工項
+    // 若有選擇案場，僅載入屬於該案場的工項選項
     const allowedPresets = globalData.projects[selectedPId] || [];
-    const addedNames = new Set();
+    const addedIndices = new Set();
 
     allowedPresets.forEach(preset => {
-      const cleanPresetName = String(preset.name).trim();
-      if (addedNames.has(cleanPresetName)) return;
-      addedNames.add(cleanPresetName);
-
-      const itemIndex = itemList.findIndex(item => String(item.name).trim() === cleanPresetName);
-      if (itemIndex !== -1) {
+      const cleanName = String(preset.name).trim();
+      const itemIndex = itemList.findIndex(item => String(item.name).trim() === cleanName);
+      if (itemIndex !== -1 && !addedIndices.has(itemIndex)) {
+        addedIndices.add(itemIndex);
         const item = itemList[itemIndex];
-        const isSelected = (cleanPresetName === String(currentSelectedName).trim()) ? 'selected' : '';
-        optionsHTML += `<option value="${itemIndex}" ${isSelected}>${item.name} ($${item.price})</option>`;
+        optionsHTML += `<option value="${itemIndex}">${item.name} ($${item.price})</option>`;
       }
     });
 
     return optionsHTML;
   }
 
-  // 選擇案場時觸發
+  // 選擇案場時觸發：清空現有列表，並只留一個空白列讓使用者選擇
   function onProjectSelect() {
-    const selectedPId = document.getElementById("project-id").value;
     const container = document.getElementById("items-container");
-    container.innerHTML = ""; // 清空所有舊工項
-
-    if (!selectedPId || !globalData.projects[selectedPId]) {
-      calculate();
-      return;
-    }
-
-    const presetItems = globalData.projects[selectedPId];
-    presetItems.forEach(preset => {
-      const div = document.createElement("div");
-      div.className = "card row-item";
-
-      const optionsHTML = buildOptionsHTML(selectedPId, preset.name);
-
-      div.innerHTML = `
-        <div class="row">
-          <select onchange="calculate()">${optionsHTML}</select>
-          <input type="number" value="${preset.qty}" min="1" onchange="calculate()" placeholder="數量">
-          <button class="btn-del" onclick="removeRow(this)">✕</button>
-        </div>
-        <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
-          小計：NT$ <span class="subtotal">0</span>
-        </div>
-      `;
-      container.appendChild(div);
-    });
-
+    container.innerHTML = ""; 
+    addRow();
     calculate();
   }
 
@@ -182,8 +154,7 @@
     const div = document.createElement("div");
     div.className = "card row-item";
 
-    // 依據當前選取的案場動態建立選單
-    const optionsHTML = buildOptionsHTML(selectedPId, "");
+    const optionsHTML = buildOptionsHTML(selectedPId);
 
     div.innerHTML = `
       <div class="row">
