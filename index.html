@@ -50,7 +50,7 @@
   <button class="btn-add" onclick="addRow()">+ 新增工項</button>
 
   <div class="total-box">
-    總計：NT$ <span id="grand-total">0</span>
+    總計：NT$ <span id="grand-total">0.00</span>
   </div>
 
   <button class="btn-send" onclick="sendQuote()">送出派工單至聊天室</button>
@@ -71,6 +71,14 @@
     const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
     const dd = String(targetDate.getDate()).padStart(2, '0');
     dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  // 格式化數字支援小數點與千分位（例如 1,234.50）
+  function formatMoney(amount) {
+    return Number(amount).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   }
 
   async function init() {
@@ -146,7 +154,6 @@
 
     const optionsHTML = buildOptionsHTML(selectedPId);
 
-    // 加入 step="any" 與 min="0" 允許小數點輸入
     div.innerHTML = `
       <div class="row">
         <select onchange="calculate()">${optionsHTML}</select>
@@ -154,7 +161,7 @@
         <button class="btn-del" onclick="removeRow(this)">✕</button>
       </div>
       <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
-        小計：NT$ <span class="subtotal">0</span>
+        小計：NT$ <span class="subtotal">0.00</span>
       </div>
     `;
     container.appendChild(div);
@@ -171,23 +178,22 @@
     
     rows.forEach(row => {
       const select = row.querySelector("select");
-      // 改用 parseFloat 抓取小數點數量
       const qty = parseFloat(row.querySelector("input").value) || 0;
       const subtotalSpan = row.querySelector(".subtotal");
 
       if (select && select.value !== "") {
-        const price = itemList[select.value].price;
-        const subtotal = Math.round(price * qty); // 小計可自動四捨五入至整數元
-        subtotalSpan.innerText = subtotal.toLocaleString();
+        const price = parseFloat(itemList[select.value].price) || 0;
+        const subtotal = price * qty;
+        subtotalSpan.innerText = formatMoney(subtotal);
         total += subtotal;
       } else if (subtotalSpan) {
-        subtotalSpan.innerText = "0";
+        subtotalSpan.innerText = "0.00";
       }
     });
 
     const grandTotal = document.getElementById("grand-total");
     if (grandTotal) {
-      grandTotal.innerText = total.toLocaleString();
+      grandTotal.innerText = formatMoney(total);
     }
   }
 
@@ -209,8 +215,9 @@
       const qty = parseFloat(row.querySelector("input").value) || 0;
       if (select && select.value !== "") {
         const item = itemList[select.value];
-        const subtotal = Math.round(item.price * qty);
-        msg += `• ${item.name} x${qty} = NT$ ${subtotal.toLocaleString()}\n`;
+        const price = parseFloat(item.price) || 0;
+        const subtotal = price * qty;
+        msg += `• ${item.name} x${qty} = NT$ ${formatMoney(subtotal)}\n`;
         hasItem = true;
       }
     });
