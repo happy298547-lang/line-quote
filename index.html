@@ -28,11 +28,11 @@
 
   <h3>🛠️ 工程派工選單</h3>
 
-  <!-- 派工單資訊設定 -->
   <div class="card">
     <div class="form-group">
       <label for="project-id">案場代號 / 名稱：</label>
-      <input type="text" id="project-id" class="input-field" placeholder="例如：115F09 或 屏37-0K+100">
+      <input type="text" id="project-id" class="input-field" list="project-list" placeholder="點擊選擇或輸入案場代號" onchange="onProjectSelect()">
+      <datalist id="project-list"></datalist>
     </div>
     <div class="form-group" style="margin-bottom:0;">
       <label for="dispatch-date">派工單日期：</label>
@@ -55,12 +55,12 @@
   <button class="btn-send" onclick="sendQuote()">送出派工單至聊天室</button>
 
 <script>
-  const LIFF_ID = "2011171896-LyV2R2Un";
+  const LIFF_ID = "2011171896-3wQjjkqC";
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
 
+  let globalData = { items: [], projects: {} };
   let itemList = [];
 
-  // 快速調整日期
   function changeDate(daysOffset) {
     const dateInput = document.getElementById("dispatch-date");
     const targetDate = new Date();
@@ -77,7 +77,19 @@
 
     try {
       let res = await fetch(GAS_URL);
-      itemList = await res.json();
+      globalData = await res.json();
+      itemList = globalData.items || [];
+
+      // 動態加入案場選單
+      const datalist = document.getElementById("project-list");
+      if (globalData.projects) {
+        Object.keys(globalData.projects).forEach(pId => {
+          const opt = document.createElement("option");
+          opt.value = pId;
+          datalist.appendChild(opt);
+        });
+      }
+
       addRow();
     } catch (e) {
       alert("讀取工項資料失敗，請確認 GAS 部署權限。");
@@ -90,6 +102,41 @@
     } catch (err) {
       console.log("LIFF 初始化錯誤:", err);
     }
+  }
+
+  // 選擇案場時自動載入對應工項
+  function onProjectSelect() {
+    const selectedPId = document.getElementById("project-id").value.trim();
+    if (!globalData.projects || !globalData.projects[selectedPId]) return;
+
+    const presetItems = globalData.projects[selectedPId];
+    const container = document.getElementById("items-container");
+    container.innerHTML = ""; // 清空舊工項
+
+    presetItems.forEach(preset => {
+      const div = document.createElement("div");
+      div.className = "card row-item";
+
+      let optionsHTML = '<option value="">--請選擇工項--</option>';
+      itemList.forEach((item, index) => {
+        const isSelected = (item.name === preset.name) ? 'selected' : '';
+        optionsHTML += `<option value="${index}" ${isSelected}>${item.name} ($${item.price})</option>`;
+      });
+
+      div.innerHTML = `
+        <div class="row">
+          <select onchange="calculate()">${optionsHTML}</select>
+          <input type="number" value="${preset.qty}" min="1" onchange="calculate()" placeholder="數量">
+          <button class="btn-del" onclick="removeRow(this)">✕</button>
+        </div>
+        <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
+          小計：NT$ <span class="subtotal">0</span>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    calculate(); // 自動計算總價
   }
 
   function addRow() {
@@ -210,4 +257,3 @@
 </script>
 </body>
 </html>
-
