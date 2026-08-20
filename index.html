@@ -45,7 +45,6 @@
     </div>
   </div>
 
-  <!-- 初始完全空白，不自動生成工項 -->
   <div id="items-container"></div>
   
   <button class="btn-add" onclick="addRow()">+ 新增工項</button>
@@ -82,7 +81,6 @@
       globalData = await res.json();
       itemList = globalData.items || [];
 
-      // 填入案場下拉選單
       const projectSelect = document.getElementById("project-id");
       projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
       if (globalData.projects) {
@@ -106,11 +104,9 @@
     }
   }
 
-  // 根據目前選擇的案場過濾工項選項
   function buildOptionsHTML(selectedPId) {
     let optionsHTML = '<option value="">--請選擇工項--</option>';
     
-    // 若未選擇案場，顯示所有工項
     if (!selectedPId || !globalData.projects || !globalData.projects[selectedPId]) {
       itemList.forEach((item, index) => {
         optionsHTML += `<option value="${index}">${item.name} ($${item.price})</option>`;
@@ -118,7 +114,6 @@
       return optionsHTML;
     }
 
-    // 若已選擇案場，僅過濾出屬於該案場的工項
     const allowedPresets = globalData.projects[selectedPId] || [];
     const addedIndices = new Set();
 
@@ -135,14 +130,12 @@
     return optionsHTML;
   }
 
-  // 切換案場時：清空下方所有已選的工項，不自動新增任何列
   function onProjectSelect() {
     const container = document.getElementById("items-container");
     container.innerHTML = "";
     calculate();
   }
 
-  // 手動點擊「+ 新增工項」時觸發
   function addRow() {
     const container = document.getElementById("items-container");
     if (!container) return;
@@ -153,10 +146,11 @@
 
     const optionsHTML = buildOptionsHTML(selectedPId);
 
+    // 加入 step="any" 與 min="0" 允許小數點輸入
     div.innerHTML = `
       <div class="row">
         <select onchange="calculate()">${optionsHTML}</select>
-        <input type="number" value="1" min="1" onchange="calculate()" placeholder="數量">
+        <input type="number" step="any" min="0" value="1" oninput="calculate()" onchange="calculate()" placeholder="數量">
         <button class="btn-del" onclick="removeRow(this)">✕</button>
       </div>
       <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
@@ -177,12 +171,13 @@
     
     rows.forEach(row => {
       const select = row.querySelector("select");
-      const qty = parseInt(row.querySelector("input").value) || 0;
+      // 改用 parseFloat 抓取小數點數量
+      const qty = parseFloat(row.querySelector("input").value) || 0;
       const subtotalSpan = row.querySelector(".subtotal");
 
       if (select && select.value !== "") {
         const price = itemList[select.value].price;
-        const subtotal = price * qty;
+        const subtotal = Math.round(price * qty); // 小計可自動四捨五入至整數元
         subtotalSpan.innerText = subtotal.toLocaleString();
         total += subtotal;
       } else if (subtotalSpan) {
@@ -211,10 +206,11 @@
 
     rows.forEach(row => {
       const select = row.querySelector("select");
-      const qty = row.querySelector("input").value;
+      const qty = parseFloat(row.querySelector("input").value) || 0;
       if (select && select.value !== "") {
         const item = itemList[select.value];
-        msg += `• ${item.name} x${qty} = NT$ ${(item.price * qty).toLocaleString()}\n`;
+        const subtotal = Math.round(item.price * qty);
+        msg += `• ${item.name} x${qty} = NT$ ${subtotal.toLocaleString()}\n`;
         hasItem = true;
       }
     });
