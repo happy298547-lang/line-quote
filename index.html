@@ -50,7 +50,7 @@
   <button class="btn-add" onclick="addRow()">+ 新增工項</button>
 
   <div class="total-box">
-    總計：NT$ <span id="grand-total">0.00</span>
+    總計：NT$ <span id="grand-total">0</span>
   </div>
 
   <button class="btn-send" onclick="sendQuote()">送出派工單至聊天室</button>
@@ -73,10 +73,17 @@
     dateInput.value = `${yyyy}-${mm}-${dd}`;
   }
 
-  // 格式化數字支援小數點與千分位（例如 1,234.50）
+  // 安全解析價格（防止非數字或符號干擾）
+  function parsePrice(priceVal) {
+    if (priceVal === undefined || priceVal === null) return 0;
+    const cleanStr = String(priceVal).replace(/[^0-9.-]+/g, "");
+    return parseFloat(cleanStr) || 0;
+  }
+
+  // 格式化數字顯示小數點
   function formatMoney(amount) {
     return Number(amount).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
       maximumFractionDigits: 2
     });
   }
@@ -161,10 +168,11 @@
         <button class="btn-del" onclick="removeRow(this)">✕</button>
       </div>
       <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
-        小計：NT$ <span class="subtotal">0.00</span>
+        小計：NT$ <span class="subtotal">0</span>
       </div>
     `;
     container.appendChild(div);
+    calculate();
   }
 
   function removeRow(btn) {
@@ -181,13 +189,14 @@
       const qty = parseFloat(row.querySelector("input").value) || 0;
       const subtotalSpan = row.querySelector(".subtotal");
 
-      if (select && select.value !== "") {
-        const price = parseFloat(itemList[select.value].price) || 0;
+      if (select && select.value !== "" && itemList[select.value]) {
+        const rawPrice = itemList[select.value].price;
+        const price = parsePrice(rawPrice);
         const subtotal = price * qty;
         subtotalSpan.innerText = formatMoney(subtotal);
         total += subtotal;
       } else if (subtotalSpan) {
-        subtotalSpan.innerText = "0.00";
+        subtotalSpan.innerText = "0";
       }
     });
 
@@ -213,9 +222,9 @@
     rows.forEach(row => {
       const select = row.querySelector("select");
       const qty = parseFloat(row.querySelector("input").value) || 0;
-      if (select && select.value !== "") {
+      if (select && select.value !== "" && itemList[select.value]) {
         const item = itemList[select.value];
-        const price = parseFloat(item.price) || 0;
+        const price = parsePrice(item.price);
         const subtotal = price * qty;
         msg += `• ${item.name} x${qty} = NT$ ${formatMoney(subtotal)}\n`;
         hasItem = true;
