@@ -10,9 +10,12 @@
     h3 { margin-top: 0; color: #333; text-align: center; }
     .card { background: white; padding: 12px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .form-group { margin-bottom: 8px; }
+    .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; font-weight: bold; }
+    .input-field { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
     select, input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
     select { flex: 2; background: #fff; }
-    input { flex: 1; width: 60px; text-align: center; }
+    input[type="number"] { flex: 1; width: 60px; text-align: center; }
     button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
     .btn-add { background: #007bff; color: white; width: 100%; font-weight: bold; padding: 12px; margin-top: 5px; }
     .btn-send { background: #07c160; color: white; width: 100%; font-size: 16px; font-weight: bold; padding: 14px; margin-top: 15px; border-radius: 8px; }
@@ -23,6 +26,19 @@
 <body>
 
   <h3>🛠️ 工項報價選單</h3>
+
+  <!-- 新增：案場與日期卡片 -->
+  <div class="card">
+    <div class="form-group">
+      <label for="project-id">案場代號 / 名稱：</label>
+      <input type="text" id="project-id" class="input-field" placeholder="例如：A01 或 高雄屏37案">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label for="quote-date">報價日期：</label>
+      <input type="date" id="quote-date" class="input-field">
+    </div>
+  </div>
+
   <div id="items-container"></div>
   
   <button class="btn-add" onclick="addRow()">+ 新增工項</button>
@@ -32,15 +48,17 @@
   </div>
 
   <button class="btn-send" onclick="sendQuote()">送出報價至聊天室</button>
-<script>
-  // 請改成截圖上的最新 LIFF ID
-  const LIFF_ID = "2011171896-LyV2R2Un";
 
+<script>
+  const LIFF_ID = "2011171896-3wQjjkqC";
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
 
   let itemList = [];
 
   async function init() {
+    // 自動帶入今天日期作為預設值
+    document.getElementById("quote-date").valueAsDate = new Date();
+
     // 1. 抓取 Google Sheet 資料
     try {
       let res = await fetch(GAS_URL);
@@ -116,8 +134,15 @@
   }
 
   async function sendQuote() {
+    const projectId = document.getElementById("project-id").value.trim() || "未填寫";
+    const quoteDate = document.getElementById("quote-date").value || "未填寫";
+
     const rows = document.querySelectorAll(".row-item");
-    let msg = "📋 【工項報價單】\n------------------\n";
+    let msg = `📋 【工項報價單】\n`;
+    msg += `📌 案場代號：${projectId}\n`;
+    msg += `📅 報價日期：${quoteDate}\n`;
+    msg += `------------------\n`;
+
     let total = document.getElementById("grand-total").innerText;
     let hasItem = false;
 
@@ -138,28 +163,25 @@
 
     msg += `------------------\n💰 總計：NT$ ${total}`;
 
-    // 檢查是否已登入，未登入則導向登入
+    // 檢查是否已登入
     if (typeof liff !== 'undefined') {
-     
-if (!liff.isLoggedIn()) {
-  liff.login();
-  return;
-}
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
 
-        
-
-      // 優先使用 sendMessages（直傳當前聊天室）
+      // 優先直傳當前聊天室
       if (liff.isInClient()) {
         try {
           await liff.sendMessages([{ type: 'text', text: msg }]);
           liff.closeWindow();
           return;
         } catch (err) {
-          console.log("sendMessages 失敗，改用 shareTargetPicker 備用方案:", err);
+          console.log("sendMessages 失敗，改用 shareTargetPicker:", err);
         }
       }
 
-      // 備用方案：跳出 LINE 聊天室選擇器（解決跨頻道與權限受限問題）
+      // 備用方案：跳出選擇器發送
       if (liff.isApiAvailable('shareTargetPicker')) {
         try {
           await liff.shareTargetPicker([{ type: 'text', text: msg }]);
@@ -175,3 +197,5 @@ if (!liff.isLoggedIn()) {
 
   init();
 </script>
+</body>
+</html>
