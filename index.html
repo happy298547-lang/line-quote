@@ -31,6 +31,7 @@
   <div class="card">
     <div class="form-group">
       <label for="project-id">案場代號 / 名稱：</label>
+      <!-- 步驟 1：同時監聽 oninput 與 onchange，選取或輸入時即時觸發 -->
       <input type="text" id="project-id" class="input-field" list="project-list" placeholder="點擊選擇或輸入案場代號" oninput="onProjectSelect()" onchange="onProjectSelect()">
       <datalist id="project-list"></datalist>
     </div>
@@ -80,8 +81,9 @@
       globalData = await res.json();
       itemList = globalData.items || [];
 
-      // 動態加入案場選單
+      // 動態將所有案場加入下拉清單
       const datalist = document.getElementById("project-list");
+      datalist.innerHTML = "";
       if (globalData.projects) {
         Object.keys(globalData.projects).forEach(pId => {
           const opt = document.createElement("option");
@@ -104,39 +106,47 @@
     }
   }
 
-  // 選擇案場時自動載入對應工項
+  // 步驟 2：選擇或輸入案場時自動帶出工項（不分大小寫與多餘空白）
   function onProjectSelect() {
-    const selectedPId = document.getElementById("project-id").value.trim();
-    if (!globalData.projects || !globalData.projects[selectedPId]) return;
+    const inputVal = document.getElementById("project-id").value.trim().toUpperCase();
+    if (!globalData.projects || !inputVal) return;
 
-    const presetItems = globalData.projects[selectedPId];
-    const container = document.getElementById("items-container");
-    container.innerHTML = ""; // 清空舊工項
+    // 比對輸入值與試算表中的案場代號
+    const matchedKey = Object.keys(globalData.projects).find(
+      pId => String(pId).trim().toUpperCase() === inputVal
+    );
 
-    presetItems.forEach(preset => {
-      const div = document.createElement("div");
-      div.className = "card row-item";
+    if (matchedKey) {
+      const presetItems = globalData.projects[matchedKey];
+      const container = document.getElementById("items-container");
+      container.innerHTML = ""; // 清空現有工項
 
-      let optionsHTML = '<option value="">--請選擇工項--</option>';
-      itemList.forEach((item, index) => {
-        const isSelected = (item.name === preset.name) ? 'selected' : '';
-        optionsHTML += `<option value="${index}" ${isSelected}>${item.name} ($${item.price})</option>`;
+      presetItems.forEach(preset => {
+        const div = document.createElement("div");
+        div.className = "card row-item";
+
+        let optionsHTML = '<option value="">--請選擇工項--</option>';
+        itemList.forEach((item, index) => {
+          // 自動比對工項名稱
+          const isSelected = (String(item.name).trim() === String(preset.name).trim()) ? 'selected' : '';
+          optionsHTML += `<option value="${index}" ${isSelected}>${item.name} ($${item.price})</option>`;
+        });
+
+        div.innerHTML = `
+          <div class="row">
+            <select onchange="calculate()">${optionsHTML}</select>
+            <input type="number" value="${preset.qty}" min="1" onchange="calculate()" placeholder="數量">
+            <button class="btn-del" onclick="removeRow(this)">✕</button>
+          </div>
+          <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
+            小計：NT$ <span class="subtotal">0</span>
+          </div>
+        `;
+        container.appendChild(div);
       });
 
-      div.innerHTML = `
-        <div class="row">
-          <select onchange="calculate()">${optionsHTML}</select>
-          <input type="number" value="${preset.qty}" min="1" onchange="calculate()" placeholder="數量">
-          <button class="btn-del" onclick="removeRow(this)">✕</button>
-        </div>
-        <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
-          小計：NT$ <span class="subtotal">0</span>
-        </div>
-      `;
-      container.appendChild(div);
-    });
-
-    calculate(); // 自動計算總價
+      calculate(); // 自動計算金額
+    }
   }
 
   function addRow() {
