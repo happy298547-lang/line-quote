@@ -31,7 +31,7 @@
   <div class="card">
     <div class="form-group">
       <label for="project-id">案場代號 / 名稱：</label>
-      <input type="text" id="project-id" class="input-field" list="project-list" placeholder="點擊選擇或輸入案場代號" onchange="onProjectSelect()">
+      <input type="text" id="project-id" class="input-field" list="project-list" placeholder="點擊選擇或輸入案場代號" oninput="onProjectSelect()" onchange="onProjectSelect()">
       <datalist id="project-list"></datalist>
     </div>
     <div class="form-group" style="margin-bottom:0;">
