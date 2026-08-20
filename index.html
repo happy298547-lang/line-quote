@@ -45,6 +45,7 @@
     </div>
   </div>
 
+  <!-- 初始完全空白，不自動生成工項 -->
   <div id="items-container"></div>
   
   <button class="btn-add" onclick="addRow()">+ 新增工項</button>
@@ -56,7 +57,7 @@
   <button class="btn-send" onclick="sendQuote()">送出派工單至聊天室</button>
 
 <script>
-  const LIFF_ID = "2011171896-LyV2R2Un";
+  const LIFF_ID = "2011171896-3wQjjkqC";
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
 
   let globalData = { items: [], projects: {} };
@@ -92,9 +93,6 @@
           projectSelect.appendChild(opt);
         });
       }
-      
-      // 預設建立一個空白工項列
-      addRow();
     } catch (e) {
       alert("讀取工項資料失敗，請確認 GAS 部署權限。");
     }
@@ -108,7 +106,7 @@
     }
   }
 
-  // 建立僅含該案場授權工項的選單選單 HTML
+  // 根據目前選擇的案場過濾工項選項
   function buildOptionsHTML(selectedPId) {
     let optionsHTML = '<option value="">--請選擇工項--</option>';
     
@@ -120,7 +118,7 @@
       return optionsHTML;
     }
 
-    // 若有選擇案場，僅載入屬於該案場的工項選項
+    // 若已選擇案場，僅過濾出屬於該案場的工項
     const allowedPresets = globalData.projects[selectedPId] || [];
     const addedIndices = new Set();
 
@@ -137,15 +135,14 @@
     return optionsHTML;
   }
 
-  // 選擇案場時觸發：清空現有列表，並只留一個空白列讓使用者選擇
+  // 切換案場時：清空下方所有已選的工項，不自動新增任何列
   function onProjectSelect() {
     const container = document.getElementById("items-container");
-    container.innerHTML = ""; 
-    addRow();
+    container.innerHTML = "";
     calculate();
   }
 
-  // 點擊新增工項時觸發
+  // 手動點擊「+ 新增工項」時觸發
   function addRow() {
     const container = document.getElementById("items-container");
     if (!container) return;
