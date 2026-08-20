@@ -31,8 +31,7 @@
   <div class="card">
     <div class="form-group">
       <label for="project-id">案場代號 / 名稱：</label>
-      <!-- 步驟 1：同時監聽 oninput 與 onchange，選取或輸入時即時觸發 -->
-      <input type="text" id="project-id" class="input-field" list="project-list" placeholder="點擊選擇或輸入案場代號" oninput="onProjectSelect()" onchange="onProjectSelect()">
+      <input type="text" id="project-id" class="input-field" list="project-list" placeholder="點擊選擇或輸入案場代號" oninput="onProjectSelect()" onchange="onProjectSelect()" onblur="onProjectSelect()">
       <datalist id="project-list"></datalist>
     </div>
     <div class="form-group" style="margin-bottom:0;">
@@ -61,6 +60,7 @@
 
   let globalData = { items: [], projects: {} };
   let itemList = [];
+  let currentProject = ""; // 紀錄當前載入的案場代號
 
   function changeDate(daysOffset) {
     const dateInput = document.getElementById("dispatch-date");
@@ -81,7 +81,7 @@
       globalData = await res.json();
       itemList = globalData.items || [];
 
-      // 動態將所有案場加入下拉清單
+      // 動態加入案場選單
       const datalist = document.getElementById("project-list");
       datalist.innerHTML = "";
       if (globalData.projects) {
@@ -106,20 +106,22 @@
     }
   }
 
-  // 步驟 2：選擇或輸入案場時自動帶出工項（不分大小寫與多餘空白）
+  // 自動帶出對應工項核心邏輯
   function onProjectSelect() {
     const inputVal = document.getElementById("project-id").value.trim().toUpperCase();
     if (!globalData.projects || !inputVal) return;
 
-    // 比對輸入值與試算表中的案場代號
+    // 尋找不分大小寫與空白的案場代號
     const matchedKey = Object.keys(globalData.projects).find(
       pId => String(pId).trim().toUpperCase() === inputVal
     );
 
-    if (matchedKey) {
+    // 防止重複觸發渲染
+    if (matchedKey && matchedKey !== currentProject) {
+      currentProject = matchedKey;
       const presetItems = globalData.projects[matchedKey];
       const container = document.getElementById("items-container");
-      container.innerHTML = ""; // 清空現有工項
+      container.innerHTML = ""; // 清空原本預設的空白項目
 
       presetItems.forEach(preset => {
         const div = document.createElement("div");
@@ -127,7 +129,7 @@
 
         let optionsHTML = '<option value="">--請選擇工項--</option>';
         itemList.forEach((item, index) => {
-          // 自動比對工項名稱
+          // 比對工項名稱帶入選取狀態
           const isSelected = (String(item.name).trim() === String(preset.name).trim()) ? 'selected' : '';
           optionsHTML += `<option value="${index}" ${isSelected}>${item.name} ($${item.price})</option>`;
         });
@@ -145,7 +147,7 @@
         container.appendChild(div);
       });
 
-      calculate(); // 自動計算金額
+      calculate(); // 強制重新計算總金額
     }
   }
 
