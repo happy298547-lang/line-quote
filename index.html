@@ -60,7 +60,7 @@
 
   let globalData = { items: [], projects: {} };
   let itemList = [];
-  let currentProject = ""; // 紀錄當前載入的案場代號
+  let currentProject = "";
 
   function changeDate(daysOffset) {
     const dateInput = document.getElementById("dispatch-date");
@@ -106,33 +106,42 @@
     }
   }
 
-  // 自動帶出對應工項核心邏輯
+  // 產生只包含該案場授權工項的選單 HTML
+  function buildOptionsHTML(allowedPresetItems, selectedName = "") {
+    let optionsHTML = '<option value="">--請選擇工項--</option>';
+    itemList.forEach((item, originalIndex) => {
+      const itemNameClean = String(item.name).trim();
+      // 比對是否屬於該案場允許的工項
+      const isAllowed = allowedPresetItems.some(preset => String(preset.name).trim() === itemNameClean);
+      
+      if (isAllowed) {
+        const isSelected = (itemNameClean === String(selectedName).trim()) ? 'selected' : '';
+        optionsHTML += `<option value="${originalIndex}" ${isSelected}>${item.name} ($${item.price})</option>`;
+      }
+    });
+    return optionsHTML;
+  }
+
   function onProjectSelect() {
     const inputVal = document.getElementById("project-id").value.trim().toUpperCase();
     if (!globalData.projects || !inputVal) return;
 
-    // 尋找不分大小寫與空白的案場代號
     const matchedKey = Object.keys(globalData.projects).find(
       pId => String(pId).trim().toUpperCase() === inputVal
     );
 
-    // 防止重複觸發渲染
     if (matchedKey && matchedKey !== currentProject) {
       currentProject = matchedKey;
       const presetItems = globalData.projects[matchedKey];
       const container = document.getElementById("items-container");
-      container.innerHTML = ""; // 清空原本預設的空白項目
+      container.innerHTML = ""; // 清空舊工項列表
 
       presetItems.forEach(preset => {
         const div = document.createElement("div");
         div.className = "card row-item";
 
-        let optionsHTML = '<option value="">--請選擇工項--</option>';
-        itemList.forEach((item, index) => {
-          // 比對工項名稱帶入選取狀態
-          const isSelected = (String(item.name).trim() === String(preset.name).trim()) ? 'selected' : '';
-          optionsHTML += `<option value="${index}" ${isSelected}>${item.name} ($${item.price})</option>`;
-        });
+        // 僅帶入目前案場專屬的工項選單
+        const optionsHTML = buildOptionsHTML(presetItems, preset.name);
 
         div.innerHTML = `
           <div class="row">
@@ -147,7 +156,7 @@
         container.appendChild(div);
       });
 
-      calculate(); // 強制重新計算總金額
+      calculate();
     }
   }
 
@@ -155,13 +164,23 @@
     const container = document.getElementById("items-container");
     if (!container) return;
 
+    const inputVal = document.getElementById("project-id").value.trim().toUpperCase();
+    let allowedItems = itemList;
+
+    // 若有選取案場，新增工項時也僅限顯示該案場之工項
+    if (globalData.projects && inputVal) {
+      const matchedKey = Object.keys(globalData.projects).find(
+        pId => String(pId).trim().toUpperCase() === inputVal
+      );
+      if (matchedKey) {
+        allowedItems = globalData.projects[matchedKey];
+      }
+    }
+
     const div = document.createElement("div");
     div.className = "card row-item";
 
-    let optionsHTML = '<option value="">--請選擇工項--</option>';
-    itemList.forEach((item, index) => {
-      optionsHTML += `<option value="${index}">${item.name} ($${item.price})</option>`;
-    });
+    const optionsHTML = buildOptionsHTML(allowedItems);
 
     div.innerHTML = `
       <div class="row">
