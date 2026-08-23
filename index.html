@@ -71,8 +71,7 @@
   const LIFF_ID = "2011171896-LyV2R2Un";
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
 
-  let globalData = { items: [], projects: {} };
-  let itemList = [];
+  let globalData = { projects: {} };
 
   function changeDate(daysOffset) {
     const dateInput = document.getElementById("dispatch-date");
@@ -104,7 +103,6 @@
     try {
       let res = await fetch(GAS_URL);
       globalData = await res.json();
-      itemList = globalData.items || [];
 
       const projectSelect = document.getElementById("project-id");
       projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
@@ -129,40 +127,6 @@
     }
   }
 
-  // 修正後的 buildOptionsHTML 函式
-  function buildOptionsHTML(selectedPId) {
-    let optionsHTML = '<option value="">--請選擇工項--</option>';
-    
-    if (!selectedPId || !globalData.projects || !globalData.projects[selectedPId]) {
-      itemList.forEach((item, index) => {
-        optionsHTML += `<option value="${index}">${item.name} ($${item.price})</option>`;
-      });
-      return optionsHTML;
-    }
-
-    const allowedPresets = globalData.projects[selectedPId] || [];
-
-    allowedPresets.forEach(preset => {
-      // 雙重比對「名稱」與「單價」，精準抓取對應案場的工項索引
-      const itemIndex = itemList.findIndex(item => 
-        String(item.name).trim() === String(preset.name).trim() && 
-        parsePrice(item.price) === parsePrice(preset.price)
-      );
-      
-      if (itemIndex !== -1) {
-        optionsHTML += `<option value="${itemIndex}">${preset.name} ($${preset.price})</option>`;
-      } else {
-        // 若完全比對不到單價，預設抓取同名的第一筆
-        const fallbackIndex = itemList.findIndex(item => String(item.name).trim() === String(preset.name).trim());
-        if (fallbackIndex !== -1) {
-          optionsHTML += `<option value="${fallbackIndex}">${itemList[fallbackIndex].name} ($${itemList[fallbackIndex].price})</option>`;
-        }
-      }
-    });
-
-    return optionsHTML;
-  }
-
   function onProjectSelect() {
     const container = document.getElementById("items-container");
     container.innerHTML = "";
@@ -171,14 +135,22 @@
 
   function addRow() {
     const container = document.getElementById("items-container");
-    if (!container) return;
-
     const selectedPId = document.getElementById("project-id").value;
+    
+    if (!selectedPId) {
+      alert("請先選擇案場代號！");
+      return;
+    }
+
+    const items = globalData.projects[selectedPId] || [];
+    let optionsHTML = '<option value="">--請選擇工項--</option>';
+    
+    items.forEach((item, index) => {
+      optionsHTML += `<option value="${index}">${item.name} ($${item.price})</option>`;
+    });
+
     const div = document.createElement("div");
     div.className = "card row-item";
-
-    const optionsHTML = buildOptionsHTML(selectedPId);
-
     div.innerHTML = `
       <div class="row">
         <select onchange="calculate()">${optionsHTML}</select>
@@ -200,6 +172,8 @@
 
   function calculate() {
     let total = 0;
+    const selectedPId = document.getElementById("project-id").value;
+    const currentItems = globalData.projects[selectedPId] || [];
     const rows = document.querySelectorAll(".row-item");
     
     rows.forEach(row => {
@@ -207,9 +181,9 @@
       const qty = parseFloat(row.querySelector("input").value) || 0;
       const subtotalSpan = row.querySelector(".subtotal");
 
-      if (select && select.value !== "" && itemList[select.value]) {
-        const rawPrice = itemList[select.value].price;
-        const price = parsePrice(rawPrice);
+      if (select && select.value !== "" && currentItems[select.value]) {
+        const item = currentItems[select.value];
+        const price = parsePrice(item.price);
         const subtotal = price * qty;
         subtotalSpan.innerText = formatMoney(subtotal);
         total += subtotal;
@@ -218,10 +192,7 @@
       }
     });
 
-    const grandTotal = document.getElementById("grand-total");
-    if (grandTotal) {
-      grandTotal.innerText = formatMoney(total);
-    }
+    document.getElementById("grand-total").innerText = formatMoney(total);
   }
 
   async function sendQuote() {
@@ -230,7 +201,9 @@
     const dispatchDate = document.getElementById("dispatch-date").value || "未填寫";
     const dispatchNote = document.getElementById("dispatch-note").value.trim() || "無";
 
+    const currentItems = globalData.projects[projectId] || [];
     const rows = document.querySelectorAll(".row-item");
+    
     let msg = `📋 【派工單】\n`;
     msg += `📌 案場代號：${projectId}\n`;
     msg += `📍 施工地點：${locationName}\n`;
@@ -243,8 +216,8 @@
     rows.forEach(row => {
       const select = row.querySelector("select");
       const qty = parseFloat(row.querySelector("input").value) || 0;
-      if (select && select.value !== "" && itemList[select.value]) {
-        const item = itemList[select.value];
+      if (select && select.value !== "" && currentItems[select.value]) {
+        const item = currentItems[select.value];
         const price = parsePrice(item.price);
         const subtotal = price * qty;
         msg += `• ${item.name} x${qty} = NT$ ${formatMoney(subtotal)}\n`;
