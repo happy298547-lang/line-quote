@@ -13,9 +13,10 @@
     .form-group { margin-bottom: 8px; }
     .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; font-weight: bold; }
     .input-field { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: #fff; }
-    select, input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    select, input, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
     select { flex: 2; background: #fff; }
     input[type="number"] { flex: 1; width: 60px; text-align: center; }
+    textarea { width: 100%; resize: vertical; box-sizing: border-box; font-family: inherit; }
     button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
     .btn-add { background: #007bff; color: white; width: 100%; font-weight: bold; padding: 12px; margin-top: 5px; }
     .btn-send { background: #07c160; color: white; width: 100%; font-size: 16px; font-weight: bold; padding: 14px; margin-top: 15px; border-radius: 8px; }
@@ -35,6 +36,10 @@
         <option value="">--請選擇案場代號--</option>
       </select>
     </div>
+    <div class="form-group">
+      <label for="location-name">地名 / 地點：</label>
+      <input type="text" id="location-name" class="input-field" placeholder="請輸入施工地點或地名">
+    </div>
     <div class="form-group" style="margin-bottom:0;">
       <label for="dispatch-date">派工單日期：</label>
       <div style="display: flex; gap: 8px; align-items: center;">
@@ -48,6 +53,13 @@
   <div id="items-container"></div>
   
   <button class="btn-add" onclick="addRow()">+ 新增工項</button>
+
+  <div class="card" style="margin-top: 12px;">
+    <div class="form-group" style="margin-bottom: 0;">
+      <label for="dispatch-note">備註說明：</label>
+      <textarea id="dispatch-note" class="input-field" rows="2" placeholder="請輸入備註事項（選填）"></textarea>
+    </div>
+  </div>
 
   <div class="total-box">
     總計：NT$ <span id="grand-total">0</span>
@@ -73,14 +85,12 @@
     dateInput.value = `${yyyy}-${mm}-${dd}`;
   }
 
-  // 安全解析價格（防止非數字或符號干擾）
   function parsePrice(priceVal) {
     if (priceVal === undefined || priceVal === null) return 0;
     const cleanStr = String(priceVal).replace(/[^0-9.-]+/g, "");
     return parseFloat(cleanStr) || 0;
   }
 
-  // 格式化數字顯示小數點
   function formatMoney(amount) {
     return Number(amount).toLocaleString(undefined, {
       minimumFractionDigits: 0,
@@ -208,11 +218,14 @@
 
   async function sendQuote() {
     const projectId = document.getElementById("project-id").value || "未填寫";
+    const locationName = document.getElementById("location-name").value.trim() || "未填寫";
     const dispatchDate = document.getElementById("dispatch-date").value || "未填寫";
+    const dispatchNote = document.getElementById("dispatch-note").value.trim() || "無";
 
     const rows = document.querySelectorAll(".row-item");
     let msg = `📋 【派工單】\n`;
     msg += `📌 案場代號：${projectId}\n`;
+    msg += `📍 施工地點：${locationName}\n`;
     msg += `📅 派工單日期：${dispatchDate}\n`;
     msg += `------------------\n`;
 
@@ -236,7 +249,9 @@
       return;
     }
 
-    msg += `------------------\n💰 總計：NT$ ${total}`;
+    msg += `------------------\n`;
+    msg += `📝 備註：${dispatchNote}\n`;
+    msg += `💰 總計：NT$ ${total}`;
 
     if (typeof liff !== 'undefined') {
       if (!liff.isLoggedIn()) {
