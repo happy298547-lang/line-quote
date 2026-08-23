@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>選取工項與派工 v2.0</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.0"></script>
+  <title>選取工項與派工 v2.1</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f4f6f8; margin: 0; }
     h3 { margin-top: 0; color: #333; text-align: center; }
@@ -129,6 +129,7 @@
     }
   }
 
+  // 修正後的 buildOptionsHTML 函式
   function buildOptionsHTML(selectedPId) {
     let optionsHTML = '<option value="">--請選擇工項--</option>';
     
@@ -140,15 +141,22 @@
     }
 
     const allowedPresets = globalData.projects[selectedPId] || [];
-    const addedIndices = new Set();
 
     allowedPresets.forEach(preset => {
-      const cleanName = String(preset.name).trim();
-      const itemIndex = itemList.findIndex(item => String(item.name).trim() === cleanName);
-      if (itemIndex !== -1 && !addedIndices.has(itemIndex)) {
-        addedIndices.add(itemIndex);
-        const item = itemList[itemIndex];
-        optionsHTML += `<option value="${itemIndex}">${item.name} ($${item.price})</option>`;
+      // 雙重比對「名稱」與「單價」，精準抓取對應案場的工項索引
+      const itemIndex = itemList.findIndex(item => 
+        String(item.name).trim() === String(preset.name).trim() && 
+        parsePrice(item.price) === parsePrice(preset.price)
+      );
+      
+      if (itemIndex !== -1) {
+        optionsHTML += `<option value="${itemIndex}">${preset.name} ($${preset.price})</option>`;
+      } else {
+        // 若完全比對不到單價，預設抓取同名的第一筆
+        const fallbackIndex = itemList.findIndex(item => String(item.name).trim() === String(preset.name).trim());
+        if (fallbackIndex !== -1) {
+          optionsHTML += `<option value="${fallbackIndex}">${itemList[fallbackIndex].name} ($${itemList[fallbackIndex].price})</option>`;
+        }
       }
     });
 
