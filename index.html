@@ -3,19 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>選取工項與派工 v2.1</title>
+  <title>選取工項與派工 v2.2</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f4f6f8; margin: 0; }
     h3 { margin-top: 0; color: #333; text-align: center; }
     .card { background: white; padding: 12px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .qty-group { display: flex; align-items: center; gap: 4px; flex: 1; }
+    .unit-text { font-size: 13px; color: #555; font-weight: bold; white-space: nowrap; }
     .form-group { margin-bottom: 8px; }
     .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; font-weight: bold; }
     .input-field { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: #fff; }
     select, input, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-    select { flex: 2; background: #fff; }
-    input[type="number"] { flex: 1; width: 60px; text-align: center; }
+    select { flex: 2; background: #fff; width: 100%; }
+    input[type="number"] { width: 100%; text-align: center; }
     textarea { width: 100%; resize: vertical; box-sizing: border-box; font-family: inherit; }
     button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
     .btn-add { background: #007bff; color: white; width: 100%; font-weight: bold; padding: 12px; margin-top: 5px; }
@@ -146,15 +148,19 @@
     let optionsHTML = '<option value="">--請選擇工項--</option>';
     
     items.forEach((item, index) => {
-      optionsHTML += `<option value="${index}">${item.name} ($${item.price})</option>`;
+      const unitDisplay = item.unit ? ` / ${item.unit}` : '';
+      optionsHTML += `<option value="${index}">${item.name} ($${item.price}${unitDisplay})</option>`;
     });
 
     const div = document.createElement("div");
     div.className = "card row-item";
     div.innerHTML = `
       <div class="row">
-        <select onchange="calculate()">${optionsHTML}</select>
-        <input type="number" step="any" min="0" value="1" oninput="calculate()" onchange="calculate()" placeholder="數量">
+        <select onchange="updateUnit(this); calculate();">${optionsHTML}</select>
+        <div class="qty-group">
+          <input type="number" step="any" min="0" value="1" oninput="calculate()" onchange="calculate()" placeholder="數量">
+          <span class="unit-text"></span>
+        </div>
         <button class="btn-del" onclick="removeRow(this)">✕</button>
       </div>
       <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
@@ -163,6 +169,19 @@
     `;
     container.appendChild(div);
     calculate();
+  }
+
+  function updateUnit(selectElem) {
+    const row = selectElem.closest('.row-item');
+    const selectedPId = document.getElementById("project-id").value;
+    const currentItems = globalData.projects[selectedPId] || [];
+    const unitSpan = row.querySelector('.unit-text');
+    
+    if (selectElem.value !== "" && currentItems[selectElem.value]) {
+      unitSpan.innerText = currentItems[selectElem.value].unit || "";
+    } else {
+      unitSpan.innerText = "";
+    }
   }
 
   function removeRow(btn) {
@@ -220,7 +239,8 @@
         const item = currentItems[select.value];
         const price = parsePrice(item.price);
         const subtotal = price * qty;
-        msg += `• ${item.name} x${qty} = NT$ ${formatMoney(subtotal)}\n`;
+        const unitStr = item.unit ? ` ${item.unit}` : '';
+        msg += `• ${item.name} x${qty}${unitStr} = NT$ ${formatMoney(subtotal)}\n`;
         hasItem = true;
       }
     });
