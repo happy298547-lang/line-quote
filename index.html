@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>選取工項與派工 v2.4</title>
+  <title>選取工項與派工 v2.5</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -17,6 +17,7 @@
     .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
     .select-wrapper { flex: 1; min-width: 0; }
     .qty-group { display: flex; align-items: center; gap: 4px; width: 85px; flex-shrink: 0; }
+    .price-tag { font-size: 13px; color: #d9363e; font-weight: bold; white-space: nowrap; margin-left: 4px; }
     .unit-text { font-size: 13px; color: #555; font-weight: bold; white-space: nowrap; }
     .form-group { margin-bottom: 8px; }
     .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; font-weight: bold; }
@@ -31,10 +32,8 @@
     .btn-date { background: #e2e8f0; color: #333; padding: 8px 12px; font-size: 12px; border-radius: 6px; }
     .total-box { font-size: 18px; font-weight: bold; text-align: right; margin-top: 15px; color: #d9363e; padding: 10px; background: #fff; border-radius: 8px; }
     
-    /* 修正 Tom Select 選中後的文字顯示與彈出選單寬度 */
-    .ts-control { border-radius: 6px !important; padding: 8px 10px !important; font-size: 14px !important; white-space: normal !important; }
-    .ts-dropdown { font-size: 14px !important; width: 100% !important; }
-    .ts-control .item { width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .ts-control { border-radius: 6px !important; padding: 8px 10px !important; font-size: 14px !important; }
+    .ts-dropdown { font-size: 14px !important; }
   </style>
 </head>
 <body>
@@ -170,9 +169,10 @@
           <select class="item-select">${optionsHTML}</select>
         </div>
         <div class="qty-group">
-          <input type="number" step="any" min="0" value="1" oninput="calculate()" onchange="calculate()" placeholder="數量">
+          <input type="number" class="item-qty" step="any" min="0" value="1" oninput="calculate()" onchange="calculate()" placeholder="數量">
           <span class="unit-text"></span>
         </div>
+        <div class="price-tag"></div>
         <button class="btn-del" onclick="removeRow(this)">✕</button>
       </div>
       <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
@@ -187,9 +187,9 @@
       placeholder: "請輸入關鍵字搜尋...",
       maxOptions: 100,
       onChange: function(val) {
-        // 同步更新原生 select 的 value 值
-        selectElem.value = val;
-        updateUnit(selectElem, val);
+        // 直接記錄選擇的 index 到 div 屬性上，避免 DOM 解析失敗
+        div.dataset.selectedIndex = val;
+        updateItemDetails(div, val);
         calculate();
       }
     });
@@ -198,16 +198,19 @@
     calculate();
   }
 
-  function updateUnit(selectElem, value) {
-    const row = selectElem.closest('.row-item');
+  function updateItemDetails(row, value) {
     const selectedPId = document.getElementById("project-id").value;
     const currentItems = globalData.projects[selectedPId] || [];
     const unitSpan = row.querySelector('.unit-text');
+    const priceTag = row.querySelector('.price-tag');
     
     if (value !== "" && value !== null && currentItems[value]) {
-      unitSpan.innerText = currentItems[value].unit || "";
+      const item = currentItems[value];
+      unitSpan.innerText = item.unit || "";
+      priceTag.innerText = `($${formatMoney(parsePrice(item.price))})`;
     } else {
       unitSpan.innerText = "";
+      priceTag.innerText = "";
     }
   }
 
@@ -228,15 +231,16 @@
     const rows = document.querySelectorAll(".row-item");
     
     rows.forEach(row => {
-      const select = row.querySelector(".item-select");
-      const qty = parseFloat(row.querySelector("input").value) || 0;
+      const index = row.dataset.selectedIndex;
+      const qtyInput = row.querySelector(".item-qty");
+      const qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
       const subtotalSpan = row.querySelector(".subtotal");
 
-      if (select && select.value !== "" && currentItems[select.value]) {
-        const item = currentItems[select.value];
+      if (index !== undefined && index !== "" && index !== null && currentItems[index]) {
+        const item = currentItems[index];
         const price = parsePrice(item.price);
         const subtotal = price * qty;
-        subtotalSpan.innerText = formatMoney(subtotal);
+        if (subtotalSpan) subtotalSpan.innerText = formatMoney(subtotal);
         total += subtotal;
       } else if (subtotalSpan) {
         subtotalSpan.innerText = "0";
@@ -265,10 +269,12 @@
     let hasItem = false;
 
     rows.forEach(row => {
-      const select = row.querySelector(".item-select");
-      const qty = parseFloat(row.querySelector("input").value) || 0;
-      if (select && select.value !== "" && currentItems[select.value]) {
-        const item = currentItems[select.value];
+      const index = row.dataset.selectedIndex;
+      const qtyInput = row.querySelector(".item-qty");
+      const qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
+
+      if (index !== undefined && index !== "" && index !== null && currentItems[index]) {
+        const item = currentItems[index];
         const price = parsePrice(item.price);
         const subtotal = price * qty;
         const unitStr = item.unit ? ` ${item.unit}` : '';
