@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>工程派工選單 v2.6</title>
+  <title>工程派工選單 v2.7</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -85,7 +85,7 @@
   const LIFF_ID = "2011171896-LyV2R2Un";
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
 
-  let globalData = { projects: {} };
+  let globalData = { projects: [], projectItems: {} };
 
   function changeDate(daysOffset) {
     const dateInput = document.getElementById("dispatch-date");
@@ -107,8 +107,10 @@
 
       const projectSelect = document.getElementById("project-id");
       projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
-      if (globalData.projects) {
-        Object.keys(globalData.projects).forEach(pId => {
+      
+      // 載入「案場總覽」快速填入下拉選單
+      if (globalData.projects && Array.isArray(globalData.projects)) {
+        globalData.projects.forEach(pId => {
           const opt = document.createElement("option");
           opt.value = pId;
           opt.textContent = pId;
@@ -116,7 +118,7 @@
         });
       }
     } catch (e) {
-      alert("讀取工項資料失敗，請確認 GAS 部署權限。");
+      alert("讀取案場資料失敗，請確認 GAS 部署權限。");
     }
 
     try {
@@ -129,6 +131,7 @@
   }
 
   function onProjectSelect() {
+    // 切換案場時清空已新增的工項列
     const container = document.getElementById("items-container");
     container.innerHTML = "";
   }
@@ -142,11 +145,10 @@
       return;
     }
 
-    const items = globalData.projects[selectedPId] || [];
+    const items = globalData.projectItems[selectedPId] || [];
     let optionsHTML = '<option value="">--請輸入關鍵字搜尋或選擇工項--</option>';
     
     items.forEach((item, index) => {
-      // 下拉選單中只保留名稱與單位，不秀金額
       const unitDisplay = item.unit ? ` (${item.unit})` : '';
       optionsHTML += `<option value="${index}">${item.name}${unitDisplay}</option>`;
     });
@@ -184,11 +186,11 @@
 
   function updateUnit(rowDiv, val) {
     const selectedPId = document.getElementById("project-id").value;
-    const currentItems = globalData.projects[selectedPId] || [];
+    const items = globalData.projectItems[selectedPId] || [];
     const unitSpan = rowDiv.querySelector('.unit-text');
     
-    if (val !== "" && val !== null && currentItems[val]) {
-      const item = currentItems[val];
+    if (val !== "" && val !== null && items[val]) {
+      const item = items[val];
       unitSpan.innerText = item.unit || "";
     } else {
       unitSpan.innerText = "";
@@ -209,7 +211,7 @@
     const dispatchDate = document.getElementById("dispatch-date").value || "未填寫";
     const dispatchNote = document.getElementById("dispatch-note").value.trim() || "無";
 
-    const currentItems = globalData.projects[projectId] || [];
+    const items = globalData.projectItems[projectId] || [];
     const rows = document.querySelectorAll(".row-item");
     
     let msg = `📋 【派工單】\n`;
@@ -223,8 +225,8 @@
     rows.forEach(row => {
       const selectedIndex = row.dataset.selectedIndex;
       const qty = parseFloat(row.querySelector(".qty-group input").value) || 0;
-      if (selectedIndex !== undefined && selectedIndex !== "" && currentItems[selectedIndex]) {
-        const item = currentItems[selectedIndex];
+      if (selectedIndex !== undefined && selectedIndex !== "" && items[selectedIndex]) {
+        const item = items[selectedIndex];
         const unitStr = item.unit ? ` ${item.unit}` : '';
         msg += `• ${item.name} x${qty}${unitStr}\n`;
         hasItem = true;
