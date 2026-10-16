@@ -108,7 +108,7 @@
       const projectSelect = document.getElementById("project-id");
       projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
       
-      // 載入「案場總覽」快速填入下拉選單
+      // 確保用正確的陣列方式將「案場總覽」代號填入選單
       if (globalData.projects && Array.isArray(globalData.projects)) {
         globalData.projects.forEach(pId => {
           const opt = document.createElement("option");
@@ -131,7 +131,6 @@
   }
 
   function onProjectSelect() {
-    // 切換案場時清空已新增的工項列
     const container = document.getElementById("items-container");
     container.innerHTML = "";
   }
