@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>選取工項與派工 v2.5</title>
+  <title>工程派工選單 v2.6</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -14,27 +14,33 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f4f6f8; margin: 0; }
     h3 { margin-top: 0; color: #333; text-align: center; }
     .card { background: white; padding: 12px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
     .select-wrapper { flex: 1; min-width: 0; }
-    .price-group { display: flex; align-items: center; font-size: 13px; color: #d9363e; font-weight: bold; white-space: nowrap; background: #fff5f5; padding: 6px 8px; border-radius: 6px; border: 1px solid #ffccc7; }
-    .qty-group { display: flex; align-items: center; gap: 4px; width: 85px; flex-shrink: 0; }
-    .unit-text { font-size: 13px; color: #555; font-weight: bold; white-space: nowrap; }
+    .qty-group { display: flex; align-items: center; gap: 6px; width: 100px; flex-shrink: 0; }
+    .unit-text { font-size: 14px; color: #555; font-weight: bold; white-space: nowrap; }
     .form-group { margin-bottom: 8px; }
     .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; font-weight: bold; }
     .input-field { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: #fff; }
-    select, input, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    input[type="number"], textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
     input[type="number"] { width: 100%; text-align: center; }
     textarea { width: 100%; resize: vertical; box-sizing: border-box; font-family: inherit; }
     button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
-    .btn-add { background: #007bff; color: white; width: 100%; font-weight: bold; padding: 12px; margin-top: 5px; }
+    .btn-add { background: #007bff; color: white; width: 100%; font-weight: bold; padding: 14px; margin-top: 5px; font-size: 16px; }
     .btn-send { background: #07c160; color: white; width: 100%; font-size: 16px; font-weight: bold; padding: 14px; margin-top: 15px; border-radius: 8px; }
-    .btn-del { background: #ff4d4f; color: white; padding: 8px 12px; font-weight: bold; flex-shrink: 0; }
+    .btn-del { background: #ff4d4f; color: white; padding: 10px 14px; font-weight: bold; flex-shrink: 0; }
     .btn-date { background: #e2e8f0; color: #333; padding: 8px 12px; font-size: 12px; border-radius: 6px; }
-    .total-box { font-size: 18px; font-weight: bold; text-align: right; margin-top: 15px; color: #d9363e; padding: 10px; background: #fff; border-radius: 8px; }
     
-    /* Tom Select 樣式微調 */
-    .ts-control { border-radius: 6px !important; padding: 8px 10px !important; font-size: 14px !important; }
-    .ts-dropdown { font-size: 14px !important; width: 100% !important; }
+    /* 放大手機版 Tom Select 點擊框與文字，避免擠在一起 */
+    .ts-control { 
+      border-radius: 8px !important; 
+      padding: 12px 12px !important; 
+      font-size: 15px !important; 
+      min-height: 48px !important; 
+      display: flex !important;
+      align-items: center !important;
+    }
+    .ts-dropdown { font-size: 15px !important; width: 100% !important; }
+    .ts-control .item { font-size: 15px !important; }
   </style>
 </head>
 <body>
@@ -73,10 +79,6 @@
     </div>
   </div>
 
-  <div class="total-box">
-    總計：NT$ <span id="grand-total">0</span>
-  </div>
-
   <button class="btn-send" onclick="sendQuote()">送出派工單至聊天室</button>
 
 <script>
@@ -94,19 +96,6 @@
     const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
     const dd = String(targetDate.getDate()).padStart(2, '0');
     dateInput.value = `${yyyy}-${mm}-${dd}`;
-  }
-
-  function parsePrice(priceVal) {
-    if (priceVal === undefined || priceVal === null) return 0;
-    const cleanStr = String(priceVal).replace(/[^0-9.-]+/g, "");
-    return parseFloat(cleanStr) || 0;
-  }
-
-  function formatMoney(amount) {
-    return Number(amount).toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    });
   }
 
   async function init() {
@@ -142,7 +131,6 @@
   function onProjectSelect() {
     const container = document.getElementById("items-container");
     container.innerHTML = "";
-    calculate();
   }
 
   function addRow() {
@@ -158,8 +146,9 @@
     let optionsHTML = '<option value="">--請輸入關鍵字搜尋或選擇工項--</option>';
     
     items.forEach((item, index) => {
-      const unitDisplay = item.unit ? ` / ${item.unit}` : '';
-      optionsHTML += `<option value="${index}">${item.name} ($${item.price}${unitDisplay})</option>`;
+      // 下拉選單中只保留名稱與單位，不秀金額
+      const unitDisplay = item.unit ? ` (${item.unit})` : '';
+      optionsHTML += `<option value="${index}">${item.name}${unitDisplay}</option>`;
     });
 
     const div = document.createElement("div");
@@ -169,52 +158,40 @@
         <div class="select-wrapper">
           <select class="item-select">${optionsHTML}</select>
         </div>
-        <div class="price-group">
-          單價:$<span class="unit-price">0</span>
-        </div>
         <div class="qty-group">
-          <input type="number" step="any" min="0" value="1" oninput="calculate()" onchange="calculate()" placeholder="數量">
+          <input type="number" step="any" min="0" value="1" placeholder="數量">
           <span class="unit-text"></span>
         </div>
         <button class="btn-del" onclick="removeRow(this)">✕</button>
-      </div>
-      <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
-        小計：NT$ <span class="subtotal">0</span>
       </div>
     `;
     container.appendChild(div);
 
     const selectElem = div.querySelector('.item-select');
     
-    // 初始化 Tom Select
     const ts = new TomSelect(selectElem, {
       create: false,
-      placeholder: "請輸入關鍵字搜尋...",
+      placeholder: "請輸入關鍵字搜尋工項...",
       maxOptions: 100,
       onChange: function(val) {
-        div.dataset.selectedIndex = val; // 強制將選取的 index 存入 dataset
-        updatePriceAndUnit(div, val);
-        calculate();
+        div.dataset.selectedIndex = val;
+        updateUnit(div, val);
       }
     });
 
     div.tomSelectInstance = ts;
-    calculate();
   }
 
-  function updatePriceAndUnit(rowDiv, val) {
+  function updateUnit(rowDiv, val) {
     const selectedPId = document.getElementById("project-id").value;
     const currentItems = globalData.projects[selectedPId] || [];
     const unitSpan = rowDiv.querySelector('.unit-text');
-    const priceSpan = rowDiv.querySelector('.unit-price');
     
     if (val !== "" && val !== null && currentItems[val]) {
       const item = currentItems[val];
       unitSpan.innerText = item.unit || "";
-      priceSpan.innerText = formatMoney(parsePrice(item.price));
     } else {
       unitSpan.innerText = "";
-      priceSpan.innerText = "0";
     }
   }
 
@@ -224,32 +201,6 @@
       row.tomSelectInstance.destroy();
     }
     row.remove();
-    calculate();
-  }
-
-  function calculate() {
-    let total = 0;
-    const selectedPId = document.getElementById("project-id").value;
-    const currentItems = globalData.projects[selectedPId] || [];
-    const rows = document.querySelectorAll(".row-item");
-    
-    rows.forEach(row => {
-      const selectedIndex = row.dataset.selectedIndex;
-      const qty = parseFloat(row.querySelector(".qty-group input").value) || 0;
-      const subtotalSpan = row.querySelector(".subtotal");
-
-      if (selectedIndex !== undefined && selectedIndex !== "" && currentItems[selectedIndex]) {
-        const item = currentItems[selectedIndex];
-        const price = parsePrice(item.price);
-        const subtotal = price * qty;
-        subtotalSpan.innerText = formatMoney(subtotal);
-        total += subtotal;
-      } else {
-        subtotalSpan.innerText = "0";
-      }
-    });
-
-    document.getElementById("grand-total").innerText = formatMoney(total);
   }
 
   async function sendQuote() {
@@ -267,7 +218,6 @@
     msg += `📅 派工單日期：${dispatchDate}\n`;
     msg += `------------------\n`;
 
-    let total = document.getElementById("grand-total").innerText;
     let hasItem = false;
 
     rows.forEach(row => {
@@ -275,10 +225,8 @@
       const qty = parseFloat(row.querySelector(".qty-group input").value) || 0;
       if (selectedIndex !== undefined && selectedIndex !== "" && currentItems[selectedIndex]) {
         const item = currentItems[selectedIndex];
-        const price = parsePrice(item.price);
-        const subtotal = price * qty;
         const unitStr = item.unit ? ` ${item.unit}` : '';
-        msg += `• ${item.name} x${qty}${unitStr} = NT$ ${formatMoney(subtotal)}\n`;
+        msg += `• ${item.name} x${qty}${unitStr}\n`;
         hasItem = true;
       }
     });
@@ -289,8 +237,7 @@
     }
 
     msg += `------------------\n`;
-    msg += `📝 備註：${dispatchNote}\n`;
-    msg += `💰 總計：NT$ ${total}`;
+    msg += `📝 備註：${dispatchNote}`;
 
     if (typeof liff !== 'undefined') {
       if (!liff.isLoggedIn()) {
