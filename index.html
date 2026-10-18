@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>工程派工選單 v2.7.2</title>
+  <title>工程派工選單 v2.8</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -45,7 +45,7 @@
 </head>
 <body>
 
-  <h3>🛠️ 工程派工選單</h3>
+  <h3>🛠️ 工程派工選單 v2.8</h3>
 
   <div class="card">
     <div class="form-group">
@@ -101,24 +101,51 @@
   async function init() {
     changeDate(0);
 
+    const projectSelect = document.getElementById("project-id");
+    projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
+
+    // 1. 【秒開機制】優先從瀏覽器本地暫存讀取舊的案場與工項資料，實現瞬間載入
+    const cachedProjects = localStorage.getItem("cached_projects");
+    const cachedItems = localStorage.getItem("cached_project_items");
+    
+    if (cachedProjects) {
+      try {
+        globalData.projects = JSON.parse(cachedProjects);
+        fillProjectSelect(globalData.projects);
+      } catch (e) {
+        console.log("解析本地快取案場失敗", e);
+      }
+    }
+    if (cachedItems) {
+      try {
+        globalData.projectItems = JSON.parse(cachedItems);
+      } catch (e) {
+        console.log("解析本地快取工項失敗", e);
+      }
+    }
+
+    // 2. 【背景同步】同時向 GAS 請求最新資料，若有更新則自動靜默覆蓋快取
     try {
       let res = await fetch(GAS_URL);
-      globalData = await res.json();
+      let serverData = await res.json();
 
-      const projectSelect = document.getElementById("project-id");
-      projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
-      
-      // 確保用正確的陣列方式將「案場總覽」代號填入選單
-      if (globalData.projects && Array.isArray(globalData.projects)) {
-        globalData.projects.forEach(pId => {
-          const opt = document.createElement("option");
-          opt.value = pId;
-          opt.textContent = pId;
-          projectSelect.appendChild(opt);
-        });
+      if (serverData.projects && Array.isArray(serverData.projects)) {
+        const serverProjectsStr = JSON.stringify(serverData.projects);
+        const serverItemsStr = JSON.stringify(serverData.projectItems || {});
+
+        // 如果雲端資料有變動，更新全域變數、本地快取並重新填入選單
+        if (serverProjectsStr !== cachedProjects || serverItemsStr !== cachedItems) {
+          globalData = serverData;
+          localStorage.setItem("cached_projects", serverProjectsStr);
+          localStorage.setItem("cached_project_items", serverItemsStr);
+          fillProjectSelect(globalData.projects);
+        }
       }
     } catch (e) {
-      alert("讀取案場資料失敗，請確認 GAS 部署權限。");
+      console.log("背景同步失敗，目前使用離線快取資料。", e);
+      if (!cachedProjects) {
+        alert("網路連線異常且無快取資料，請確認網路狀態。");
+      }
     }
 
     try {
@@ -127,6 +154,24 @@
       }
     } catch (err) {
       console.log("LIFF 初始化錯誤:", err);
+    }
+  }
+
+  // 輔助函式：動態填入案場下拉選單
+  function fillProjectSelect(projectsArray) {
+    const projectSelect = document.getElementById("project-id");
+    const currentVal = projectSelect.value; // 保留使用者目前可能已經點選的值
+    
+    projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
+    projectsArray.forEach(pId => {
+      const opt = document.createElement("option");
+      opt.value = pId;
+      opt.textContent = pId;
+      projectSelect.appendChild(opt);
+    });
+    
+    if (currentVal) {
+      projectSelect.value = currentVal;
     }
   }
 
