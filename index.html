@@ -2,8 +2,9 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>工程派工選單 v2.8</title>
+  <!-- 鎖定手機瀏覽器縮放，避免打字時畫面自動放大 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>工程派工選單 v2.9</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -14,14 +15,14 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f4f6f8; margin: 0; }
     h3 { margin-top: 0; color: #333; text-align: center; }
     .card { background: white; padding: 12px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+    .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
     .select-wrapper { flex: 1; min-width: 0; }
     .qty-group { display: flex; align-items: center; gap: 6px; width: 100px; flex-shrink: 0; }
     .unit-text { font-size: 14px; color: #555; font-weight: bold; white-space: nowrap; }
     .form-group { margin-bottom: 8px; }
     .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; font-weight: bold; }
-    .input-field { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; background: #fff; }
-    input[type="number"], textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .input-field { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box; background: #fff; }
+    input[type="number"], textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
     input[type="number"] { width: 100%; text-align: center; }
     textarea { width: 100%; resize: vertical; box-sizing: border-box; font-family: inherit; }
     button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
@@ -30,22 +31,22 @@
     .btn-del { background: #ff4d4f; color: white; padding: 10px 14px; font-weight: bold; flex-shrink: 0; }
     .btn-date { background: #e2e8f0; color: #333; padding: 8px 12px; font-size: 12px; border-radius: 6px; }
     
-    /* 放大手機版 Tom Select 點擊框與文字，避免擠在一起 */
+    /* 放大並拉長手機版 Tom Select 顯示框，讓長工項完整呈現 */
     .ts-control { 
       border-radius: 8px !important; 
-      padding: 12px 12px !important; 
+      padding: 10px 12px !important; 
       font-size: 15px !important; 
-      min-height: 48px !important; 
-      display: flex !important;
-      align-items: center !important;
+      min-height: 60px !important; 
+      height: auto !important;
+      align-items: flex-start !important;
     }
     .ts-dropdown { font-size: 15px !important; width: 100% !important; }
-    .ts-control .item { font-size: 15px !important; }
+    .ts-control .item { font-size: 15px !important; white-space: normal !important; word-break: break-all; }
   </style>
 </head>
 <body>
 
-  <h3>🛠️ 工程派工選單 v2.8</h3>
+  <h3>🛠️ 工程派工選單 v2.9</h3>
 
   <div class="card">
     <div class="form-group">
@@ -104,7 +105,7 @@
     const projectSelect = document.getElementById("project-id");
     projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
 
-    // 1. 【秒開機制】優先從瀏覽器本地暫存讀取舊的案場與工項資料，實現瞬間載入
+    // 1. 本地快取秒開
     const cachedProjects = localStorage.getItem("cached_projects");
     const cachedItems = localStorage.getItem("cached_project_items");
     
@@ -124,7 +125,7 @@
       }
     }
 
-    // 2. 【背景同步】同時向 GAS 請求最新資料，若有更新則自動靜默覆蓋快取
+    // 2. 背景靜默同步
     try {
       let res = await fetch(GAS_URL);
       let serverData = await res.json();
@@ -133,7 +134,6 @@
         const serverProjectsStr = JSON.stringify(serverData.projects);
         const serverItemsStr = JSON.stringify(serverData.projectItems || {});
 
-        // 如果雲端資料有變動，更新全域變數、本地快取並重新填入選單
         if (serverProjectsStr !== cachedProjects || serverItemsStr !== cachedItems) {
           globalData = serverData;
           localStorage.setItem("cached_projects", serverProjectsStr);
@@ -142,10 +142,7 @@
         }
       }
     } catch (e) {
-      console.log("背景同步失敗，目前使用離線快取資料。", e);
-      if (!cachedProjects) {
-        alert("網路連線異常且無快取資料，請確認網路狀態。");
-      }
+      console.log("背景同步失敗，使用離線快取。", e);
     }
 
     try {
@@ -157,10 +154,9 @@
     }
   }
 
-  // 輔助函式：動態填入案場下拉選單
   function fillProjectSelect(projectsArray) {
     const projectSelect = document.getElementById("project-id");
-    const currentVal = projectSelect.value; // 保留使用者目前可能已經點選的值
+    const currentVal = projectSelect.value;
     
     projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
     projectsArray.forEach(pId => {
@@ -209,6 +205,10 @@
           <span class="unit-text"></span>
         </div>
         <button class="btn-del" onclick="removeRow(this)">✕</button>
+      </div>
+      <!-- 新增的工項專屬備註欄位 -->
+      <div style="margin-top: 6px;">
+        <input type="text" class="input-field row-note" placeholder="工項備註（選填，例：現場工班慣稱）" style="font-size: 14px; padding: 8px;">
       </div>
     `;
     container.appendChild(div);
@@ -269,10 +269,16 @@
     rows.forEach(row => {
       const selectedIndex = row.dataset.selectedIndex;
       const qty = parseFloat(row.querySelector(".qty-group input").value) || 0;
+      const rowNote = row.querySelector(".row-note").value.trim(); // 取得該工項的獨立備註
+
       if (selectedIndex !== undefined && selectedIndex !== "" && items[selectedIndex]) {
         const item = items[selectedIndex];
         const unitStr = item.unit ? ` ${item.unit}` : '';
-        msg += `• ${item.name} x${qty}${unitStr}\n`;
+        msg += `• ${item.name} x${qty}${unitStr}`;
+        if (rowNote) {
+          msg += ` (備註: ${rowNote})`; // 如果有填寫工項備註，一併串入訊息中
+        }
+        msg += `\n`;
         hasItem = true;
       }
     });
@@ -283,7 +289,7 @@
     }
 
     msg += `------------------\n`;
-    msg += `📝 備註：${dispatchNote}`;
+    msg += `📝 總備註：${dispatchNote}`;
 
     if (typeof liff !== 'undefined') {
       if (!liff.isLoggedIn()) {
