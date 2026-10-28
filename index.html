@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>工程派工選單 v2.9.4</title>
+  <title>工程派工選單 v2.9.5</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -52,7 +52,7 @@
 </head>
 <body>
 
-  <h3>🛠️ 工程派工選單 v2.9.4</h3>
+  <h3>🛠️ 工程派工選單 v2.9.5</h3>
 
   <div class="card">
     <div class="form-group">
@@ -90,7 +90,6 @@
 
 <script>
   const LIFF_ID = "2011171896-LyV2R2Un";
-  // 已更新為您指定的最新 GAS 部署網址
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzNMwb0lNxLGcu9cEbs2oozHmus-bTzg3syY8hj2PuoW5pB3iNwCN3QHB6onoZw8gcQ/exec";
 
   let globalData = { projects: [], projectItems: {} };
@@ -211,7 +210,7 @@
         <button class="btn-del" onclick="removeRow(this)">✕</button>
       </div>
       <div style="margin-top: 6px;">
-        <input type="text" class="input-field row-note" placeholder="工項備註（選填）" style="font-size: 14px; padding: 8px;">
+        <input type="text" class="input-field row-note" placeholder="工項備註（選填，例：怪手）" style="font-size: 14px; padding: 8px;">
       </div>
     `;
     container.appendChild(div);
@@ -258,7 +257,7 @@
   }
 
   async function sendQuote() {
-    const projectId = document.getElementById("project-id").value || "未填寫";
+    const projectId = document.getElementById("project-id").value || "v2.9.5";
     const locationName = document.getElementById("location-name").value.trim() || "未填寫";
     const dispatchDate = document.getElementById("dispatch-date").value || "未填寫";
     const dispatchNote = document.getElementById("dispatch-note").value.trim() || "無";
@@ -277,11 +276,16 @@
     rows.forEach(row => {
       const selectedIndex = row.dataset.selectedIndex;
       const qty = parseFloat(row.querySelector(".qty-group input").value) || 0;
+      const rowNote = row.querySelector(".row-note").value.trim();
 
       if (selectedIndex !== undefined && selectedIndex !== "" && items[selectedIndex]) {
         const item = items[selectedIndex];
-        // 嚴格維持原本乾淨的格式：工項名稱 x數量 單位，不帶入任何工項備註文字，保護 Make 解析與試算表欄位
-        msg += `• ${item.name} x${qty} ${item.unit || ''}\n`;
+        // 格式：• [工項名稱] x[數量] [單位] (慣稱: [備註]) -> 單位在前面，慣稱在後面，不影響 Make 記錄欄位
+        msg += `• ${item.name} x${qty} ${item.unit || ''}`;
+        if (rowNote) {
+          msg += ` (慣稱: ${rowNote})`;
+        }
+        msg += `\n`;
         hasItem = true;
       }
     });
