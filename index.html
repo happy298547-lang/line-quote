@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>工程派工選單 v2.9.2</title>
+  <title>工程派工選單 v2.9.3</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -52,7 +52,7 @@
 </head>
 <body>
 
-  <h3>🛠️ 工程派工選單 v2.9.2</h3>
+  <h3>🛠️ 工程派工選單 v2.9.3</h3>
 
   <div class="card">
     <div class="form-group">
@@ -210,7 +210,7 @@
         <button class="btn-del" onclick="removeRow(this)">✕</button>
       </div>
       <div style="margin-top: 6px;">
-        <input type="text" class="input-field row-note" placeholder="工項備註（可編輯，對應 E 欄慣稱）" style="font-size: 14px; padding: 8px;">
+        <input type="text" class="input-field row-note" placeholder="工項備註（選填）" style="font-size: 14px; padding: 8px;">
       </div>
     `;
     container.appendChild(div);
@@ -280,10 +280,10 @@
 
       if (selectedIndex !== undefined && selectedIndex !== "" && items[selectedIndex]) {
         const item = items[selectedIndex];
-        // 單位維持純粹的單位，不把備註黏進去，確保派單紀錄表的單位欄位乾淨
+        // 嚴格分開：工項名稱 | 數量 | 單位。工項備註獨立成一行或夾在中間，避免 Make 誤抓進單位欄位
         msg += `• ${item.name} x${qty} ${item.unit || ''}`;
         if (rowNote) {
-          msg += ` [備註: ${rowNote}]`;
+          msg += ` (備註: ${rowNote})`;
         }
         msg += `\n`;
         hasItem = true;
