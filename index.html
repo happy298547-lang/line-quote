@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>工程派工選單 v2.9.1</title>
+  <title>工程派工選單 v2.9.2</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -23,7 +23,6 @@
     .input-field { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box; background: #fff; }
     input[type="number"] { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; width: 100%; text-align: center; }
     
-    /* 讓備註說明文字框可以自動隨著輸入內容變大 */
     textarea.input-field { 
       width: 100%; 
       resize: vertical; 
@@ -39,7 +38,6 @@
     .btn-del { background: #ff4d4f; color: white; padding: 10px 14px; font-weight: bold; flex-shrink: 0; }
     .btn-date { background: #e2e8f0; color: #333; padding: 8px 12px; font-size: 12px; border-radius: 6px; }
     
-    /* 放大並拉長手機版 Tom Select 顯示框 */
     .ts-control { 
       border-radius: 8px !important; 
       padding: 10px 12px !important; 
@@ -54,7 +52,7 @@
 </head>
 <body>
 
-  <h3>🛠️ 工程派工選單 v2.9.1</h3>
+  <h3>🛠️ 工程派工選單 v2.9.2</h3>
 
   <div class="card">
     <div class="form-group">
@@ -92,7 +90,7 @@
 
 <script>
   const LIFF_ID = "2011171896-LyV2R2Un";
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwoWv9643o512qG0WZ6LxdAOJ6rb0CAd00068IRozPryzeXBayfDzGMSk_wkvmK-Wro/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbzNMwb0lNxLGcu9cEbs2oozHmus-bTzg3syY8hj2PuoW5pB3iNwCN3QHB6onoZw8gcQ/exec";
 
   let globalData = { projects: [], projectItems: {} };
 
@@ -107,7 +105,6 @@
     dateInput.value = `${yyyy}-${mm}-${dd}`;
   }
 
-  // 自動撐開 textarea 高度
   function autoResizeTextarea(el) {
     el.style.height = 'auto';
     el.style.height = (el.scrollHeight) + 'px';
@@ -194,7 +191,6 @@
     
     items.forEach((item, index) => {
       const unitDisplay = item.unit ? ` (${item.unit})` : '';
-      // 讓搜尋字串同時包含名稱與 E 欄備註 (慣稱)，這樣打「怪手」也能搜尋到
       const searchKey = `${item.name} ${item.note || ''}`;
       const noteDisplay = item.note ? ` [慣稱: ${item.note}]` : '';
       optionsHTML += `<option value="${index}" data-search="${searchKey}">${item.name}${unitDisplay}${noteDisplay}</option>`;
@@ -225,7 +221,7 @@
       create: false,
       placeholder: "請輸入關鍵字搜尋工項或慣稱...",
       maxOptions: 100,
-      searchField: ['text', 'search'], // 支援自訂的 data-search 欄位進行關鍵字搜尋
+      searchField: ['text', 'search'],
       onChange: function(val) {
         div.dataset.selectedIndex = val;
         updateUnitAndNote(div, val);
@@ -244,7 +240,6 @@
     if (val !== "" && val !== null && items[val]) {
       const item = items[val];
       unitSpan.innerText = item.unit || "";
-      // 如果 E 欄本身有預設備註，自動填入；若沒有則保持空白供手動輸入
       if (!noteInput.value && item.note) {
         noteInput.value = item.note;
       }
@@ -285,10 +280,10 @@
 
       if (selectedIndex !== undefined && selectedIndex !== "" && items[selectedIndex]) {
         const item = items[selectedIndex];
-        const unitStr = item.unit ? ` ${item.unit}` : '';
-        msg += `• ${item.name} x${qty}${unitStr}`;
+        // 單位維持純粹的單位，不把備註黏進去，確保派單紀錄表的單位欄位乾淨
+        msg += `• ${item.name} x${qty} ${item.unit || ''}`;
         if (rowNote) {
-          msg += ` (備註: ${rowNote})`;
+          msg += ` [備註: ${rowNote}]`;
         }
         msg += `\n`;
         hasItem = true;
