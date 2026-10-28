@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>工程派工選單 v2.9.3</title>
+  <title>工程派工選單 v2.9.4</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -52,7 +52,7 @@
 </head>
 <body>
 
-  <h3>🛠️ 工程派工選單 v2.9.3</h3>
+  <h3>🛠️ 工程派工選單 v2.9.4</h3>
 
   <div class="card">
     <div class="form-group">
@@ -90,6 +90,7 @@
 
 <script>
   const LIFF_ID = "2011171896-LyV2R2Un";
+  // 已更新為您指定的最新 GAS 部署網址
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzNMwb0lNxLGcu9cEbs2oozHmus-bTzg3syY8hj2PuoW5pB3iNwCN3QHB6onoZw8gcQ/exec";
 
   let globalData = { projects: [], projectItems: {} };
@@ -276,16 +277,11 @@
     rows.forEach(row => {
       const selectedIndex = row.dataset.selectedIndex;
       const qty = parseFloat(row.querySelector(".qty-group input").value) || 0;
-      const rowNote = row.querySelector(".row-note").value.trim();
 
       if (selectedIndex !== undefined && selectedIndex !== "" && items[selectedIndex]) {
         const item = items[selectedIndex];
-        // 嚴格分開：工項名稱 | 數量 | 單位。工項備註獨立成一行或夾在中間，避免 Make 誤抓進單位欄位
-        msg += `• ${item.name} x${qty} ${item.unit || ''}`;
-        if (rowNote) {
-          msg += ` (備註: ${rowNote})`;
-        }
-        msg += `\n`;
+        // 嚴格維持原本乾淨的格式：工項名稱 x數量 單位，不帶入任何工項備註文字，保護 Make 解析與試算表欄位
+        msg += `• ${item.name} x${qty} ${item.unit || ''}\n`;
         hasItem = true;
       }
     });
