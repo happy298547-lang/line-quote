@@ -2,9 +2,8 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <!-- 鎖定手機瀏覽器縮放，避免打字時畫面自動放大 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>工程派工選單 v2.9</title>
+  <title>工程派工選單 v2.9.1</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js?v=2.1"></script>
   
   <!-- 引入 Tom Select 搜尋套件 -->
@@ -22,16 +21,25 @@
     .form-group { margin-bottom: 8px; }
     .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; font-weight: bold; }
     .input-field { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box; background: #fff; }
-    input[type="number"], textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-    input[type="number"] { width: 100%; text-align: center; }
-    textarea { width: 100%; resize: vertical; box-sizing: border-box; font-family: inherit; }
+    input[type="number"] { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; width: 100%; text-align: center; }
+    
+    /* 讓備註說明文字框可以自動隨著輸入內容變大 */
+    textarea.input-field { 
+      width: 100%; 
+      resize: vertical; 
+      box-sizing: border-box; 
+      font-family: inherit; 
+      min-height: 80px;
+      overflow-y: hidden;
+    }
+
     button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
     .btn-add { background: #007bff; color: white; width: 100%; font-weight: bold; padding: 14px; margin-top: 5px; font-size: 16px; }
     .btn-send { background: #07c160; color: white; width: 100%; font-size: 16px; font-weight: bold; padding: 14px; margin-top: 15px; border-radius: 8px; }
     .btn-del { background: #ff4d4f; color: white; padding: 10px 14px; font-weight: bold; flex-shrink: 0; }
     .btn-date { background: #e2e8f0; color: #333; padding: 8px 12px; font-size: 12px; border-radius: 6px; }
     
-    /* 放大並拉長手機版 Tom Select 顯示框，讓長工項完整呈現 */
+    /* 放大並拉長手機版 Tom Select 顯示框 */
     .ts-control { 
       border-radius: 8px !important; 
       padding: 10px 12px !important; 
@@ -46,7 +54,7 @@
 </head>
 <body>
 
-  <h3>🛠️ 工程派工選單 v2.9</h3>
+  <h3>🛠️ 工程派工選單 v2.9.1</h3>
 
   <div class="card">
     <div class="form-group">
@@ -76,7 +84,7 @@
   <div class="card" style="margin-top: 12px;">
     <div class="form-group" style="margin-bottom: 0;">
       <label for="dispatch-note">備註說明：</label>
-      <textarea id="dispatch-note" class="input-field" rows="2" placeholder="請輸入備註事項（選填）"></textarea>
+      <textarea id="dispatch-note" class="input-field" placeholder="請輸入備註事項（選填）" oninput="autoResizeTextarea(this)"></textarea>
     </div>
   </div>
 
@@ -99,13 +107,18 @@
     dateInput.value = `${yyyy}-${mm}-${dd}`;
   }
 
+  // 自動撐開 textarea 高度
+  function autoResizeTextarea(el) {
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight) + 'px';
+  }
+
   async function init() {
     changeDate(0);
 
     const projectSelect = document.getElementById("project-id");
     projectSelect.innerHTML = '<option value="">--請選擇案場代號--</option>';
 
-    // 1. 本地快取秒開
     const cachedProjects = localStorage.getItem("cached_projects");
     const cachedItems = localStorage.getItem("cached_project_items");
     
@@ -113,19 +126,14 @@
       try {
         globalData.projects = JSON.parse(cachedProjects);
         fillProjectSelect(globalData.projects);
-      } catch (e) {
-        console.log("解析本地快取案場失敗", e);
-      }
+      } catch (e) { console.log(e); }
     }
     if (cachedItems) {
       try {
         globalData.projectItems = JSON.parse(cachedItems);
-      } catch (e) {
-        console.log("解析本地快取工項失敗", e);
-      }
+      } catch (e) { console.log(e); }
     }
 
-    // 2. 背景靜默同步
     try {
       let res = await fetch(GAS_URL);
       let serverData = await res.json();
@@ -141,17 +149,13 @@
           fillProjectSelect(globalData.projects);
         }
       }
-    } catch (e) {
-      console.log("背景同步失敗，使用離線快取。", e);
-    }
+    } catch (e) { console.log(e); }
 
     try {
       if (typeof liff !== 'undefined') {
         await liff.init({ liffId: LIFF_ID });
       }
-    } catch (err) {
-      console.log("LIFF 初始化錯誤:", err);
-    }
+    } catch (err) { console.log(err); }
   }
 
   function fillProjectSelect(projectsArray) {
@@ -190,7 +194,10 @@
     
     items.forEach((item, index) => {
       const unitDisplay = item.unit ? ` (${item.unit})` : '';
-      optionsHTML += `<option value="${index}">${item.name}${unitDisplay}</option>`;
+      // 讓搜尋字串同時包含名稱與 E 欄備註 (慣稱)，這樣打「怪手」也能搜尋到
+      const searchKey = `${item.name} ${item.note || ''}`;
+      const noteDisplay = item.note ? ` [慣稱: ${item.note}]` : '';
+      optionsHTML += `<option value="${index}" data-search="${searchKey}">${item.name}${unitDisplay}${noteDisplay}</option>`;
     });
 
     const div = document.createElement("div");
@@ -206,9 +213,8 @@
         </div>
         <button class="btn-del" onclick="removeRow(this)">✕</button>
       </div>
-      <!-- 新增的工項專屬備註欄位 -->
       <div style="margin-top: 6px;">
-        <input type="text" class="input-field row-note" placeholder="工項備註（選填，例：現場工班慣稱）" style="font-size: 14px; padding: 8px;">
+        <input type="text" class="input-field row-note" placeholder="工項備註（可編輯，對應 E 欄慣稱）" style="font-size: 14px; padding: 8px;">
       </div>
     `;
     container.appendChild(div);
@@ -217,25 +223,31 @@
     
     const ts = new TomSelect(selectElem, {
       create: false,
-      placeholder: "請輸入關鍵字搜尋工項...",
+      placeholder: "請輸入關鍵字搜尋工項或慣稱...",
       maxOptions: 100,
+      searchField: ['text', 'search'], // 支援自訂的 data-search 欄位進行關鍵字搜尋
       onChange: function(val) {
         div.dataset.selectedIndex = val;
-        updateUnit(div, val);
+        updateUnitAndNote(div, val);
       }
     });
 
     div.tomSelectInstance = ts;
   }
 
-  function updateUnit(rowDiv, val) {
+  function updateUnitAndNote(rowDiv, val) {
     const selectedPId = document.getElementById("project-id").value;
     const items = globalData.projectItems[selectedPId] || [];
     const unitSpan = rowDiv.querySelector('.unit-text');
+    const noteInput = rowDiv.querySelector('.row-note');
     
     if (val !== "" && val !== null && items[val]) {
       const item = items[val];
       unitSpan.innerText = item.unit || "";
+      // 如果 E 欄本身有預設備註，自動填入；若沒有則保持空白供手動輸入
+      if (!noteInput.value && item.note) {
+        noteInput.value = item.note;
+      }
     } else {
       unitSpan.innerText = "";
     }
@@ -269,14 +281,14 @@
     rows.forEach(row => {
       const selectedIndex = row.dataset.selectedIndex;
       const qty = parseFloat(row.querySelector(".qty-group input").value) || 0;
-      const rowNote = row.querySelector(".row-note").value.trim(); // 取得該工項的獨立備註
+      const rowNote = row.querySelector(".row-note").value.trim();
 
       if (selectedIndex !== undefined && selectedIndex !== "" && items[selectedIndex]) {
         const item = items[selectedIndex];
         const unitStr = item.unit ? ` ${item.unit}` : '';
         msg += `• ${item.name} x${qty}${unitStr}`;
         if (rowNote) {
-          msg += ` (備註: ${rowNote})`; // 如果有填寫工項備註，一併串入訊息中
+          msg += ` (備註: ${rowNote})`;
         }
         msg += `\n`;
         hasItem = true;
